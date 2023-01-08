@@ -3,12 +3,15 @@
 #include <wx/wxprec.h>
 #include <math.h>
 #include <string>
+#include <sstream>
+
 #ifndef WX_PRECOMP
 #include <wx/wx.h>
 #endif
 
 void CheckForZero(); 
 void GetRidOfZeros();
+void CommaWithoutNumber();
 
 class MyApp : public wxApp
 {
@@ -29,6 +32,8 @@ private:
 	void Addition(wxCommandEvent& event);
 	void Subtraction(wxCommandEvent& event);
 	void Result(wxCommandEvent& event);
+	void Delete(wxCommandEvent& event); 
+	void Negate(wxCommandEvent& event); 
 	wxDECLARE_EVENT_TABLE();
 
 };
@@ -59,7 +64,8 @@ enum
 	ID_ButtonNegate = 15,
 	ID_ButtonComma = 16,
 	ID_Text = 17,
-	ID_Subtraction = 18
+	ID_Subtraction = 18,
+	ID_Delete = 19
 
 };
 
@@ -78,8 +84,10 @@ EVT_BUTTON(ID_Button9, MyApp::OnButtonPressed9)
 EVT_BUTTON(ID_ButtonResult, MyApp::Result)
 EVT_BUTTON(ID_ButtonAdd, MyApp::Addition)
 EVT_BUTTON(ID_Subtraction, MyApp::Subtraction)
-EVT_BUTTON(ID_ButtonNegate, MyApp::OnButtonPressed0)
+EVT_BUTTON(ID_ButtonNegate, MyApp::Negate)
 EVT_BUTTON(ID_ButtonComma, MyApp::Comma)
+EVT_BUTTON(ID_Delete, MyApp::Delete)
+
 wxEND_EVENT_TABLE()
 
 
@@ -87,14 +95,16 @@ wxEND_EVENT_TABLE()
 wxIMPLEMENT_APP(MyApp);
 
 std::string NumberArray = "0", NumberArray2;
-char Operator;
+char Operator = 0;
 float number1 = 0, number2 = 0, numberResult=0; 
-int Number, LoopToPoint;
+int Number, LoopToPoint, NumbersAfterComma = 0;
 int PointToNumber = 0;
-int FirstCommaPosition = 0, SecondCommaPosition = 0;
+int FirstCommaPosition = 0, SecondCommaPosition = 0, CommaPosition = 0;
 int GoToSecondNumber = 0; 
 wxStaticText* text;
 std::string* CurrentArray = &NumberArray; 
+std::ostringstream ss;
+
 
 float ConvertToNumber(int StartingPoint, int EndingPoint, int CommaPos = 0)
 {
@@ -151,6 +161,8 @@ bool MyApp::OnInit()
 	wxButton* button_add = new wxButton(window, ID_ButtonAdd, "+", wxPoint(450, 550), wxSize(150, 150));
 	wxButton* button_subtr = new wxButton(window, ID_Subtraction, "-", wxPoint(450, 400), wxSize(150, 150));
 
+	wxButton* del = new wxButton(window, ID_Delete, "x", wxPoint(450, 250), wxSize(150, 150));
+
 	text = new wxStaticText(window, ID_Text, NumberArray, wxPoint(0, 0), wxSize(617, 60));
 
 
@@ -165,8 +177,7 @@ MyFrame::MyFrame(const wxString& title, wxWindowID id, const wxPoint& pos, const
 
 void MyApp::OnButtonPressed0(wxCommandEvent& event)
 {
-	if (NumberArray[0] == 48)
-		NumberArray.pop_back();
+	CheckForZero(); 
 
 	NumberArray.append("0"); 
 	/*NumberArray[PointToNumber] = '0';*/
@@ -278,6 +289,10 @@ void MyApp::Addition(wxCommandEvent& event)
 	
 	number1 = std::stof(NumberArray);
 
+	CommaPosition = NumberArray.find(".");
+		
+	if (NumberArray.length() - CommaPosition - 1 > NumbersAfterComma)
+		NumbersAfterComma = NumberArray.length() - CommaPosition - 1; 
 
 	NumberArray.append("+");
 	PointToNumber++;
@@ -290,20 +305,45 @@ void MyApp::Addition(wxCommandEvent& event)
 void MyApp::Result(wxCommandEvent& event)
 {
 	int OperatorPos = NumberArray.find(Operator);
-	NumberArray2 = NumberArray.substr(OperatorPos+1); 
-	
-	number2 = std::stof(NumberArray2); 
+
+	if (OperatorPos != std::string::npos)
+	{
+		NumberArray2 = NumberArray.substr(OperatorPos + 1);
+
+		/*CommaPosition = NumberArray2.find(".");
+
+		if (NumberArray2.length() - CommaPosition - 1 > NumbersAfterComma)
+			NumbersAfterComma = NumberArray2.length() - CommaPosition - 1;*/
+
+		number2 = std::stof(NumberArray2);
+	}
+
 	
 	if (Operator == '+')
-		numberResult = number1 + number2;
+		number1 += number2;
 
 	if (Operator == '-')
-		numberResult = number1 - number2; 
+		number1 -= number2; 
 
 	NumberArray.erase();
-	NumberArray = std::to_string(numberResult); 
 
-	GetRidOfZeros(); 
+	ss << number1;
+	NumberArray = ss.str(); 
+
+	ss.str("");
+	ss.clear(); 
+
+	/*NumberArray = std::to_string(number1); */
+
+	/*if (NumberArray[NumberArray.find(".") + NumbersAfterComma + 1] == '9')
+	{
+		numberResult += 1 / pow(10, NumbersAfterComma); 
+		NumberArray.erase();
+		NumberArray = std::to_string(number1);
+	}
+	NumberArray.resize(NumberArray.find(".") + NumbersAfterComma + 1);*/
+
+	/*GetRidOfZeros(); */
 
 	text->wxStaticText::SetLabel(NumberArray); 
 
@@ -327,6 +367,7 @@ void MyApp::Subtraction(wxCommandEvent& event)
 
 void MyApp::Comma(wxCommandEvent& event)
 {
+		
 		if (GoToSecondNumber == 1)
 		{
 			SecondCommaPosition = PointToNumber;
@@ -339,33 +380,129 @@ void MyApp::Comma(wxCommandEvent& event)
 	        GoToSecondNumber++;
 	    }
 
+		
+		if (NumberArray.find(Operator) != std::string::npos)
+		{
+			if (NumberArray.find(".", NumberArray.find(Operator)) != std::string::npos)
+			{
+				return; 
+			}
+		}
 
+		else
+		{
+			if (NumberArray.find(".") != std::string::npos)
+			{
+				return; 
+			}
+		}
+		
+
+	CommaWithoutNumber(); 
+
+		
 	NumberArray.append(".");
+
 	PointToNumber++;
 	text->wxStaticText::SetLabel(NumberArray);
 
 }
 
+void MyApp::Delete(wxCommandEvent& event)
+{
+	if (NumberArray.length() == 1)
+	{
+		NumberArray.pop_back(); 
+		NumberArray.append("0");
+		text->wxStaticText::SetLabel(NumberArray);
+	}
+
+	if (NumberArray.length() > 1)
+	{
+		NumberArray.pop_back();
+		text->wxStaticText::SetLabel(NumberArray);
+	}
+}
+
+void MyApp::Negate(wxCommandEvent& event)
+{
+	float ConvertedNum = std::stof(NumberArray);
+	if (ConvertedNum != 0)
+	{
+		if (NumberArray.find(Operator) != std::string::npos)
+		{
+			std::string NumArr = NumberArray.substr(NumberArray.find(Operator) + 1);
+			ConvertedNum = std::stof(NumArr);
+			
+			int OpPos = NumberArray.find(Operator); 
+			int len = NumberArray.length() - 1; 
+			if (OpPos <= len)
+			{
+				if (Operator == '+')
+				{
+					Operator = '-';
+					NumberArray[OpPos] = '-'; 
+					text->wxStaticText::SetLabel(NumberArray);
+					return; 
+				}
+
+				if (Operator == '-')
+				{
+					Operator = '+';
+					NumberArray[OpPos] = '+';
+					text->wxStaticText::SetLabel(NumberArray);
+					return;
+				}
+			}
+		}
+
+
+
+		ConvertedNum = -(ConvertedNum);
+		NumberArray = std::to_string(ConvertedNum); 
+		GetRidOfZeros(); 
+		text->wxStaticText::SetLabel(NumberArray);
+	}
+
+
+}
+
 void CheckForZero()
 {
-	if (NumberArray[0] == 48)
+	if (NumberArray[0] == '0' && NumberArray[1] != '.')
+	{
+		NumberArray.pop_back();
+	}
+
+	if (Operator != 0 && NumberArray.find(Operator+1) == '0')
 	{
 		NumberArray.pop_back(); 
 	}
-
 }
 
 void GetRidOfZeros()
 {
-	for (int i = NumberArray.length() - 1; i > 0; i--)
-	{
-		if (NumberArray[i] == '0')
-			NumberArray.pop_back();
-		else if (NumberArray[i] == '.')
-			NumberArray.pop_back();
+	
+	int i = NumberArray.length() - 1;
 
-		else
-			return; 
+	while((NumberArray[i] == '0' || NumberArray[i] == '.') && i >= NumberArray.find("."))
+	{
+		NumberArray.pop_back(); 
+		i--;
 	}
+
 }
 
+void CommaWithoutNumber()
+{
+	int pos = NumberArray.find(Operator);
+	int len = NumberArray.length(); 
+	if (pos != std::string::npos)
+	{
+		if (len - pos == 1)
+		{
+			NumberArray.append("0"); 
+		
+		}
+	}
+}
